@@ -1,19 +1,134 @@
 <!doctype html>
-<html>
+<html lang="en">
 <head>
-  <meta charset="UTF-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>TEST</title>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>I love you — Heart</title>
+
   <style>
-    html,body{margin:0;height:100%;background:#000;display:flex;align-items:center;justify-content:center;}
-    .box{color:#fff;font:700 28px system-ui;text-align:center}
-    .box small{display:block;font-weight:400;opacity:.8;margin-top:10px}
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: black;
+      overflow: hidden;
+      font-family: system-ui, -apple-system, sans-serif;
+    }
+
+    .stage {
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      perspective: 1000px;
+    }
+
+    svg {
+      width: min(90vmin, 760px);
+      height: min(90vmin, 760px);
+      filter:
+        drop-shadow(0 0 12px rgba(255,210,235,.35))
+        drop-shadow(0 0 26px rgba(234,128,176,.3));
+      will-change: transform;
+    }
+
+    .loveText {
+      fill: #ea80b0;
+      font-size: 18px;
+      letter-spacing: 2px;
+      stroke: rgba(255,255,255,.14);
+      stroke-width: 1px;
+      user-select: none;
+    }
+
+    #heartPath {
+      fill: none;
+    }
   </style>
 </head>
+
 <body>
-  <div class="box">
-    ✅ IT WORKS
-    <small>If you see this text, GitHub Pages is updating correctly.</small>
+  <div class="stage">
+    <svg id="heartSvg"
+         viewBox="0 0 600 600"
+         xmlns="http://www.w3.org/2000/svg">
+
+      <defs>
+        <path id="heartPath" d="
+          M300,150
+          C300,105 235,92 205,120
+          C155,165 170,245 240,290
+          C270,310 295,340 300,365
+          C305,340 330,310 360,290
+          C430,245 445,165 395,120
+          C365,92 300,105 300,150
+          Z
+        " />
+      </defs>
+
+      <g id="texts"></g>
+    </svg>
   </div>
+
+  <script>
+    const PHRASE = "I love you";
+    const COUNT = 24;
+    const SPEED = 0.06;
+
+    const svg = document.getElementById("heartSvg");
+    const g = document.getElementById("texts");
+
+    const lanes = [];
+
+    for (let i = 0; i < COUNT; i++) {
+      const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      text.setAttribute("class", "loveText");
+
+      const tp = document.createElementNS("http://www.w3.org/2000/svg", "textPath");
+      tp.setAttribute("href", "#heartPath");
+      tp.textContent = (PHRASE + "   ").repeat(18);
+
+      const start = (i * 100) / COUNT;
+      tp.setAttribute("startOffset", start + "%");
+
+      text.appendChild(tp);
+      g.appendChild(text);
+
+      lanes.push({ tp, offset: start, seed: Math.random() * 1000 });
+    }
+
+    let mx = 0, my = 0, sx = 0, sy = 0;
+    let boost = 0;
+
+    window.addEventListener("pointermove", e => {
+      mx = (e.clientX / innerWidth) * 2 - 1;
+      my = (e.clientY / innerHeight) * 2 - 1;
+    });
+
+    window.addEventListener("pointerdown", () => {
+      boost = 0.3;
+    });
+
+    function animate(t) {
+      sx += (mx - sx) * 0.08;
+      sy += (my - sy) * 0.08;
+
+      boost *= 0.92;
+
+      svg.style.transform =
+        `rotateX(${-sy * 14}deg)
+         rotateY(${sx * 14}deg)
+         scale(${1 + boost})`;
+
+      for (const l of lanes) {
+        l.offset = (l.offset + SPEED + boost) % 100;
+        const wig = Math.sin((t + l.seed) * 0.02) * 0.25;
+        l.tp.setAttribute("startOffset", (l.offset + wig) + "%");
+      }
+
+      requestAnimationFrame(animate);
+    }
+
+    requestAnimationFrame(animate);
+  </script>
 </body>
 </html>
