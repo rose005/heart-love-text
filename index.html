@@ -141,3 +141,146 @@
   </script>
 </body>
 </html>
+
+さくら, [1/31/26 7:40 PM]
+https://rose005.github.io/heart-love-text/
+
+さくら, [1/31/26 7:42 PM]
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>I love you — Heart</title>
+  <style>
+    html, body{
+      margin:0;
+      height:100%;
+      background:#000;
+      overflow:hidden;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    }
+    .stage{
+      height:100%;
+      display:flex;
+      align-items:center;
+      justify-content:center;
+      perspective: 1000px;
+    }
+    svg{
+      width:min(92vmin, 760px);
+      height:min(92vmin, 760px);
+      filter: drop-shadow(0 0 12px rgba(255,210,235,.35))
+              drop-shadow(0 0 26px rgba(234,128,176,.30));
+      will-change: transform;
+      transform-origin: 50% 50%;
+    }
+    .loveText{
+      fill:#ea80b0;
+      font-size:18px;
+      letter-spacing:2px;
+      paint-order: stroke fill;
+      stroke: rgba(255,255,255,.14);
+      stroke-width: 1px;
+      user-select:none;
+    }
+    /* можно оставить, он невидимый */
+    #heartPath{
+      fill:none;
+      stroke: transparent;
+      stroke-width: 2;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="stage">
+    <svg id="heartSvg"
+         viewBox="0 0 600 600"
+         xmlns="http://www.w3.org/2000/svg"
+         xmlns:xlink="http://www.w3.org/1999/xlink">
+
+      <defs>
+        <path id="heartPath" d="
+          M300,150
+          C300,105 235,92 205,120
+          C155,165 170,245 240,290
+          C270,310 295,340 300,365
+          C305,340 330,310 360,290
+          C430,245 445,165 395,120
+          C365,92 300,105 300,150
+          Z
+        " />
+      </defs>
+
+      <g id="texts"></g>
+    </svg>
+  </div>
+
+  <script>
+    const PHRASE = "I love you";
+    const COUNT = 24;
+    const BASE_SPEED = 0.06;
+
+    const svg = document.getElementById("heartSvg");
+    const g = document.getElementById("texts");
+
+    const lanes = [];
+
+    for (let i = 0; i < COUNT; i++) {
+      const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      text.setAttribute("class", "loveText");
+
+      const tp = document.createElementNS("http://www.w3.org/2000/svg", "textPath");
+      // ВАЖНО: современный href (работает в Safari/Chrome)
+      tp.setAttribute("href", "#heartPath");
+      // на всякий случай оставим и старый вариант
+      tp.setAttributeNS("http://www.w3.org/1999/xlink", "xlink:href", "#heartPath");
+
+      tp.textContent = (PHRASE + "   ").repeat(18);
+
+      const start = (i * 100) / COUNT;
+      tp.setAttribute("startOffset", start + "%");
+
+      text.appendChild(tp);
+      g.appendChild(text);
+
+      lanes.push({ tp, offset: start, seed: Math.random() * 1000 });
+    }
+
+    let mx = 0, my = 0, sx = 0, sy = 0;
+    let clickBoost = 0;
+
+    window.addEventListener("pointermove", (e) => {
+      mx = (e.clientX / innerWidth) * 2 - 1;
+      my = (e.clientY / innerHeight) * 2 - 1;
+    }, {passive:true});
+
+    window.addEventListener("pointerdown", () => {
+      clickBoost = 0.28;
+    });
+
+    function loop(t){
+      sx += (mx - sx) * 0.08;
+      sy += (my - sy) * 0.08;
+
+      const tiltX = -sy * 14;
+      const tiltY =  sx * 14;
+
+      clickBoost *= 0.92;
+
+      const scale = 1 + clickBoost;
+      svg.style.transform = rotateX(${tiltX}deg) rotateY(${tiltY}deg) scale(${scale});
+
+      for (const l of lanes){
+        l.offset = (l.offset + BASE_SPEED + clickBoost) % 100;
+        const wig = Math.sin((t + l.seed) * 0.02) * 0.25;
+        l.tp.setAttribute("startOffset", (l.offset + wig) + "%");
+      }
+
+      requestAnimationFrame(loop);
+    }
+    requestAnimationFrame(loop);
+  </script>
+</body>
+</html>
