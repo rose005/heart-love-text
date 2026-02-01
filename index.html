@@ -1,0 +1,83 @@
+window.addEventListener("pointerdown", () => {
+      const now = performance.now();
+      clickStartedAt = now;
+      clickUntil = now + CLICK.durationMs;
+    });
+
+    function rand(a,b){ return a + Math.random() * (b - a); }
+
+    // Animation
+    let t = 0;
+    function animate(now){
+      t++;
+
+      // Smooth mouse
+      smoothX += (targetX - smoothX) * 0.08;
+      smoothY += (targetY - smoothY) * 0.08;
+
+      // tilt
+      const tiltX = (-smoothY) * MOUSE.maxTiltDeg;
+      const tiltY = ( smoothX) * MOUSE.maxTiltDeg;
+
+      // center boost
+      const dist = Math.min(1, Math.hypot(smoothX, smoothY));
+      const centerFactor = (1 - dist);
+      const mouseSpeedBoost = centerFactor * MOUSE.centerBoost;
+
+      // auto burst logic
+      if (now >= nextBurstAt) {
+        burstActiveUntil = now + BURST.durationMs;
+        nextBurstAt = now + rand(BURST.minIntervalMs, BURST.maxIntervalMs);
+      }
+      const burstBoost = (now < burstActiveUntil) ? BURST.addSpeed : 0;
+
+      // click burst logic (smooth fade)
+      let clickBoost = 0;
+      let pulse = 0;
+      let shakeX = 0, shakeY = 0;
+
+      if (now < clickUntil) {
+        const p = (now - clickStartedAt) / CLICK.durationMs; // 0..1
+        // ease out
+        const ease = 1 - Math.pow(1 - p, 3);
+
+        // speed boost that peaks early then fades
+        clickBoost = CLICK.addSpeed * (1 - ease);
+
+        // pulse scale: quick pop then calm
+        pulse = CLICK.pulseAmp * Math.sin(p * Math.PI) * (1 - p);
+
+        // shake: random-ish but smooth
+        const s = (1 - p);
+        shakeX = Math.sin((t + 30) * 0.9) * CLICK.shakeAmp * s;
+        shakeY = Math.cos((t + 10) * 0.85) * CLICK.shakeAmp * s;
+      }
+
+      // final speed
+      const speed = BASE_SPEED + mouseSpeedBoost + burstBoost + clickBoost;
+
+      // final scale (mouse + click pulse)
+      const scale = 1 + centerFactor * MOUSE.maxScaleAdd + pulse;
+
+      // apply transform
+      // NOTE: .breath animation is on SVG too, but we override with inline transform.
+      // So we mimic a tiny vertical float here to keep it alive:
+      const floatY = Math.sin(now * 0.0012) * 6;
+
+      svg.style.transform =
+        translate(${shakeX}px, ${floatY + shakeY}px) rotateX(${tiltX}deg) rotateY(${tiltY}deg) scale(${scale});
+
+      // move text along path
+      for (const lane of lanes) {
+        lane.offset = (lane.offset + speed) % 100;
+        const wig = WIGGLE ? (Math.sin((t + lane.seed) * 0.02) * WIGGLE) : 0;
+        lane.tp.setAttribute("startOffset", (lane.offset + wig) + "%");
+      }
+
+      requestAnimationFrame(animate);
+    }
+
+    requestAnimationFrame(animate);
+  </script>
+</body>
+</html>
