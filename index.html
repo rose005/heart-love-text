@@ -1,77 +1,137 @@
-window.addEventListener("pointerdown", () => {
-      const now = performance.now();
-      clickStartedAt = now;
-      clickUntil = now + CLICK.durationMs;
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>I love you — Heart</title>
+
+  <style>
+    html, body {
+      margin: 0;
+      padding: 0;
+      width: 100%;
+      height: 100%;
+      background: black;
+      overflow: hidden;
+      font-family: system-ui, -apple-system, BlinkMacSystemFont, sans-serif;
+    }
+
+    .stage {
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      perspective: 1000px;
+    }
+
+    svg {
+      width: min(90vmin, 700px);
+      height: min(90vmin, 700px);
+      filter:
+        drop-shadow(0 0 12px rgba(255,180,220,.5))
+        drop-shadow(0 0 24px rgba(234,128,176,.35));
+      will-change: transform;
+    }
+
+    .text {
+      fill: #ea80b0;
+      font-size: 18px;
+      letter-spacing: 2px;
+      paint-order: stroke fill;
+      stroke: rgba(255,255,255,.15);
+      stroke-width: 1px;
+      user-select: none;
+    }
+
+    #heartPath {
+      fill: none;
+      stroke: transparent;
+    }
+  </style>
+</head>
+
+<body>
+  <div class="stage">
+    <svg id="heart" viewBox="0 0 600 600">
+      <defs>
+        <path id="heartPath"
+          d="
+            M300,150
+            C300,100 220,90 190,130
+            C140,180 160,260 240,300
+            C270,320 295,350 300,370
+            C305,350 330,320 360,300
+            C440,260 460,180 410,130
+            C380,90 300,100 300,150
+            Z
+          "
+        />
+      </defs>
+
+      <g id="group"></g>
+    </svg>
+  </div>
+
+  <script>
+    const PHRASE = "I love you";
+    const COUNT = 24;
+    const BASE_SPEED = 0.06;
+
+    const svg = document.getElementById("heart");
+    const group = document.getElementById("group");
+
+    const lanes = [];
+
+    for (let i = 0; i < COUNT; i++) {
+      const text = document.createElementNS("http://www.w3.org/2000/svg", "text");
+      text.setAttribute("class", "text");
+
+      const path = document.createElementNS("http://www.w3.org/2000/svg", "textPath");
+      path.setAttributeNS("http://www.w3.org/1999/xlink", "xlink:href", "#heartPath");
+      path.textContent = (PHRASE + " ").repeat(14);
+
+      const start = (i * 100) / COUNT;
+      path.setAttribute("startOffset", start + "%");
+
+      text.appendChild(path);
+      group.appendChild(text);
+
+      lanes.push({
+        path,
+        offset: start,
+        seed: Math.random() * 1000
+      });
+    }
+
+    let mx = 0, my = 0, sx = 0, sy = 0;
+    let clickBoost = 0;
+
+    window.addEventListener("pointermove", e => {
+      mx = (e.clientX / window.innerWidth) * 2 - 1;
+      my = (e.clientY / window.innerHeight) * 2 - 1;
     });
 
-    function rand(a,b){ return a + Math.random() * (b - a); }
+    window.addEventListener("pointerdown", () => {
+      clickBoost = 0.25;
+    });
 
-    // Animation
-    let t = 0;
-    function animate(now){
-      t++;
+    function animate(t) {
+      sx += (mx - sx) * 0.08;
+      sy += (my - sy) * 0.08;
 
-      // Smooth mouse
-      smoothX += (targetX - smoothX) * 0.08;
-      smoothY += (targetY - smoothY) * 0.08;
+      const tiltX = -sy * 14;
+      const tiltY = sx * 14;
 
-      // tilt
-      const tiltX = (-smoothY) * MOUSE.maxTiltDeg;
-      const tiltY = ( smoothX) * MOUSE.maxTiltDeg;
-
-      // center boost
-      const dist = Math.min(1, Math.hypot(smoothX, smoothY));
-      const centerFactor = (1 - dist);
-      const mouseSpeedBoost = centerFactor * MOUSE.centerBoost;
-
-      // auto burst logic
-      if (now >= nextBurstAt) {
-        burstActiveUntil = now + BURST.durationMs;
-        nextBurstAt = now + rand(BURST.minIntervalMs, BURST.maxIntervalMs);
-      }
-      const burstBoost = (now < burstActiveUntil) ? BURST.addSpeed : 0;
-
-      // click burst logic (smooth fade)
-      let clickBoost = 0;
-      let pulse = 0;
-      let shakeX = 0, shakeY = 0;
-
-      if (now < clickUntil) {
-        const p = (now - clickStartedAt) / CLICK.durationMs; // 0..1
-        // ease out
-        const ease = 1 - Math.pow(1 - p, 3);
-
-        // speed boost that peaks early then fades
-        clickBoost = CLICK.addSpeed * (1 - ease);
-
-        // pulse scale: quick pop then calm
-        pulse = CLICK.pulseAmp * Math.sin(p * Math.PI) * (1 - p);
-
-        // shake: random-ish but smooth
-        const s = (1 - p);
-        shakeX = Math.sin((t + 30) * 0.9) * CLICK.shakeAmp * s;
-        shakeY = Math.cos((t + 10) * 0.85) * CLICK.shakeAmp * s;
-      }
-
-      // final speed
-      const speed = BASE_SPEED + mouseSpeedBoost + burstBoost + clickBoost;
-
-      // final scale (mouse + click pulse)
-      const scale = 1 + centerFactor * MOUSE.maxScaleAdd + pulse;
-
-      // apply transform
-      // NOTE: .breath animation is on SVG too, but we override with inline transform.
-      // So we mimic a tiny vertical float here to keep it alive:
-      const floatY = Math.sin(now * 0.0012) * 6;
+      clickBoost *= 0.92;
 
       svg.style.transform =
-        translate(${shakeX}px, ${floatY + shakeY}px) rotateX(${tiltX}deg) rotateY(${tiltY}deg) scale(${scale});
+        rotateX(${tiltX}deg) rotateY(${tiltY}deg) scale(${1 + clickBoost});
 
-      // move text along path
-      for (const lane of lanes) {
-        lane.offset = (lane.offset + speed) % 100;
-        const wig = WIGGLE ? (Math.sin((t + lane.seed) * 0.02) * WIGGLE) : 0;
-        lane.tp.setAttribute("startOffset", (lane.offset + wig) + "%");
+      for (const l of lanes) {
+        l.offset = (l.offset + BASE_SPEED + clickBoost) % 100;
+        const wiggle = Math.sin((t + l.seed) * 0.02) * 0.25;
+        l.path.setAttribute("startOffset", (l.offset + wiggle) + "%");
       }
 
       requestAnimationFrame(animate);
